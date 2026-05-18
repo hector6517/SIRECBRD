@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIRECB ESTABLE</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef2f7;color:#111827}
+.header{background:linear-gradient(135deg,#7f1d1d,#b91c1c,#111827);color:white;padding:18px;border-bottom:5px solid #f59e0b}
+.container{padding:18px;max-width:1250px;margin:auto}
+.card{background:white;padding:18px;border-radius:15px;margin-bottom:16px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+input,select,textarea,button{width:100%;padding:11px;margin:7px 0;border-radius:10px;border:1px solid #cbd5e1;box-sizing:border-box}
+button{background:#b91c1c;color:white;border:0;font-weight:bold;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+.btn-blue{background:#1d4ed8}.btn-green{background:#047857}.btn-orange{background:#ea580c}.btn-dark{background:#111827}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.hidden{display:none!important}.menu{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.menu button{width:auto}
+.item{background:#f8fafc;border-left:5px solid #b91c1c;padding:12px;border-radius:10px;margin:8px 0}
+.badge{padding:12px;border-radius:12px;margin:8px 0;color:white;font-weight:bold}.rojo{background:#dc2626}.azul{background:#2563eb}.verde{background:#16a34a}.gris{background:#6b7280}
+.doc{white-space:pre-wrap;background:#f8fafc;border:1px solid #cbd5e1;padding:15px;border-radius:10px}
+.stat{background:#111827;color:white;border-radius:12px;padding:15px;text-align:center}.stat b{font-size:28px;color:#f59e0b}
+.small{font-size:12px;color:#64748b}.ok{color:#047857;font-weight:bold}.err{color:#b91c1c;font-weight:bold}
+@media(max-width:850px){.grid,.grid3{grid-template-columns:1fr}.menu button{width:100%}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="container">
+  <div class="card" style="max-width:430px;margin:45px auto">
+    <h1 style="text-align:center;color:#991b1b">🚒 SIRECB</h1>
+    <h3 style="text-align:center">Acceso institucional</h3>
+    <form id="loginForm">
+      <input id="correo" type="email" placeholder="Correo" required autocomplete="username">
+      <input id="clave" type="password" placeholder="Contraseña" required autocomplete="current-password">
+      <button type="submit">Entrar</button>
+    </form>
+    <button type="button" class="btn-dark" id="testBtn">Probar botón</button>
+    <p id="msg"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="header">
+    <h1>🚒 SIRECB + SIRECB_NAV</h1>
+    <p>Versión estable · códigos globales · documentos · resumen diario · NAV por unidades disponibles</p>
+  </div>
+
+  <div class="container">
+    <div class="menu">
+      <button type="button" data-mod="dash">Dashboard</button>
+      <button type="button" data-mod="rep">Reportes</button>
+      <button type="button" data-mod="docs">Documentos</button>
+      <button type="button" data-mod="res">Resumen diario</button>
+      <button type="button" data-mod="adm">Admin</button>
+      <button type="button" data-mod="usr">Usuarios</button>
+      <button type="button" data-mod="mun">Municipios</button>
+      <button type="button" data-mod="nav" id="navMenu">NAV</button>
+      <button type="button" class="btn-dark" id="logoutBtn">Salir</button>
+    </div>
+
+    <section id="dash" class="mod card"><h2>Dashboard operativo</h2><div id="dashBox"></div></section>
+
+    <section id="rep" class="mod hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Nuevo reporte</h2>
+          <input id="caso911" placeholder="Caso 911">
+          <select id="municipioSelect"></select>
+          <input id="direccion" placeholder="Dirección">
+          <select id="tipo"></select>
+          <select id="subtipo"></select>
+          <div id="otroDiv" class="hidden"><input id="otro" placeholder="Especifique otro tipo"></div>
+          <input id="unidad" placeholder="Unidad principal">
+          <input id="conductor" placeholder="Conductor">
+          <input id="comandante" placeholder="Comandante">
+          <label>Hora recepción</label><input id="hRecep" type="time">
+          <label>Hora despacho</label><input id="hDesp" type="time">
+          <label>Hora llegada</label><input id="hLleg" type="time">
+          <select id="estado"><option>En proceso</option><option>Despachada</option><option>En el lugar</option><option>En retorno</option><option>Concluida</option><option>Cancelada</option></select>
+          <textarea id="informe" placeholder="Informe operativo"></textarea>
+          <textarea id="datosComp" placeholder="Datos complementarios"></textarea>
+          <label>Hora retiro</label><input id="hRet" type="time">
+          <label>Hora retorno</label><input id="hRetorno" type="time">
+          <textarea id="hallazgos" placeholder="Hallazgos técnicos"></textarea>
+          <textarea id="conclusiones" placeholder="Conclusiones periciales / causa probable"></textarea>
+
+          <h3>Apoyo opcional</h3>
+          <button class="btn-blue" type="button" id="btnAI">Agregar apoyo interno</button><div id="aiBox"></div>
+          <button class="btn-orange" type="button" id="btnAE">Agregar apoyo externo</button><div id="aeBox"></div>
+          <button class="btn-green" type="button" id="btnAG">Agregar agencia</button><div id="agBox"></div>
+
+          <button class="btn-green" type="button" id="guardarReporteBtn">Guardar reporte</button>
+        </div>
+        <div class="card"><h2>Historial</h2><div id="tabla"></div></div>
+      </div>
+    </section>
+
+    <section id="docs" class="mod hidden card">
+      <h2>Documentos</h2>
+      <select id="docReporte"></select>
+      <select id="docTipo"><option>Reporte de la Emergencia</option><option>Constancia de Emergencia</option><option>Certificación de Emergencia</option></select>
+      <input id="solicitante" placeholder="Solicitante">
+      <input id="cedula" placeholder="Cédula">
+      <input id="oficial" placeholder="Oficial que expide">
+      <input id="cargo" placeholder="Cargo / rango">
+      <button type="button" id="generarDocBtn">Generar vista previa</button>
+      <button type="button" class="btn-blue" onclick="window.print()">Imprimir / Guardar PDF</button>
+      <div id="docPreview" class="doc"></div>
+    </section>
+
+    <section id="res" class="mod hidden card">
+      <h2>Resumen diario y estadística</h2>
+      <input id="fechaResumen" type="date">
+      <button type="button" id="resumenBtn">Generar resumen</button>
+      <div id="stats" class="grid3"></div>
+      <div id="resDetalle"></div>
+    </section>
+
+    <section id="adm" class="mod hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>Códigos globales</h2>
+          <p class="small">Aplican para todos los cuerpos. Ya no dependen del municipio.</p>
+          <input id="nuevoCodigo" placeholder="Nuevo código global">
+          <button type="button" id="crearCodigoBtn">Guardar</button>
+          <div id="codigosBox"></div>
+        </div>
+        <div class="card">
+          <h2>Estaciones</h2>
+          <select id="munEst"></select>
+          <input id="estNombre" placeholder="Estación">
+          <input id="estDir" placeholder="Dirección">
+          <button type="button" id="crearEstacionBtn">Guardar</button>
+          <div id="estBox"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Unidades</h2>
+        <select id="munUni"></select>
+        <input id="uniCodigo" placeholder="Código unidad">
+        <input id="uniTipo" placeholder="Tipo">
+        <button type="button" id="crearUnidadBtn">Guardar</button>
+        <div id="uniBox"></div>
+      </div>
+    </section>
+
+    <section id="usr" class="mod hidden card">
+      <h2>Usuarios</h2>
+      <input id="uid" placeholder="User ID">
+      <input id="unombre" placeholder="Nombre">
+      <input id="uemail" placeholder="Correo">
+      <select id="urol"><option>admin_general</option><option>admin_municipal</option><option>operador</option><option>departamento_tecnico</option><option>despacho_nav</option><option>conductor_nav</option><option>comandante_nav</option></select>
+      <select id="umun"></select>
+      <button type="button" id="crearPerfilBtn">Guardar perfil</button>
+      <div id="usuariosBox"></div>
+    </section>
+
+    <section id="mun" class="mod hidden card">
+      <h2>Municipios / cuerpos</h2>
+      <input id="mnombre" placeholder="Nombre">
+      <input id="mslug" placeholder="Slug">
+      <input id="mtel" placeholder="Teléfono">
+      <input id="mdir" placeholder="Dirección">
+      <select id="mnav"><option value="false">NAV No</option><option value="true">NAV Sí</option></select>
+      <button type="button" id="crearMunicipioBtn">Guardar municipio</button>
+      <div id="munBox"></div>
+    </section>
+
+    <section id="nav" class="mod hidden">
+      <div class="grid">
+        <div class="card">
+          <h2>NAV Unidad</h2>
+          <p class="small">El municipio viene del perfil. Solo aparecen unidades del cuerpo del usuario.</p>
+          <select id="navUnidad"></select>
+          <input id="navCond" placeholder="Conductor">
+          <input id="navCom" placeholder="Comandante">
+          <textarea id="navDot" placeholder="Dotación"></textarea>
+          <button type="button" class="btn-green" id="activarUnidadBtn">Activar unidad / Disponible</button>
+          <button type="button" class="btn-orange" id="fueraServicioBtn">Fuera de servicio</button>
+          <div id="miUnidad"></div>
+        </div>
+        <div class="card">
+          <h2>Despacho NAV</h2>
+          <p class="small">Solo puede despachar unidades logueadas y disponibles.</p>
+          <select id="navReporte"></select>
+          <select id="navDisponible"></select>
+          <textarea id="navObs" placeholder="Observaciones"></textarea>
+          <button type="button" class="btn-blue" id="despacharBtn">Despachar</button>
+          <h3>Board disponibles</h3>
+          <div id="board"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const $ = (id) => document.getElementById(id);
+const URL = "https://fbsewmlvoanppoqgruyq.supabase.co";
+const KEY = "sb_publishable_g_i_78DiK3vTg2OIPx1F3w_pSJ4F2Mz";
+let supabaseClient = null;
+let user = null, perfil = null, municipios = [], unidades = [], reportes = [], sesiones = [];
+
+const subs = {
+  "INCENDIO":["Estructural residencial","Estructural comercial","Vehicular","Forestal","Eléctrico","GLP","Otro"],
+  "RESCATE":["Vehicular","Altura","Espacio confinado","Acuático","Persona atrapada","Otro"],
+  "ACCIDENTE VEHICULAR":["Colisión","Volcadura","Atropello","Múltiples vehículos","Motocicleta","Otro"],
+  "DERRAME":["Combustible","GLP","Químico","Aceite","Otro"],
+  "DERRUMBE":["Estructural","Deslizamiento","Colapso parcial","Otro"],
+  "INUNDACIÓN":["Vivienda","Vía pública","Rescate por inundación","Otro"],
+  "FUGA DE GAS":["GLP residencial","GLP comercial","Cilindro","Otro"],
+  "MATERIALES PELIGROSOS":["Químico","Biológico","Gases","Otro"],
+  "OTRO":["Otro"]
+};
+
+function setMsg(text, cls=""){ const m=$("msg"); if(m){m.className=cls; m.textContent=text;} }
+function show(id){ document.querySelectorAll(".mod").forEach(x=>x.classList.add("hidden")); $(id).classList.remove("hidden"); if(id==="nav") cargarNav(); }
+function permitidos(){ return perfil && perfil.rol === "admin_general" ? municipios : municipios.filter(m => m.id === (perfil ? perfil.municipio_id : null)); }
+function ids(){ return permitidos().map(m=>m.id); }
+function opt(items, label="nombre"){ return items.map(x=>`<option value="${x.id}">${x[label] || x.codigo || x.nombre}</option>`).join(""); }
+function initTipos(){ $("tipo").innerHTML = Object.keys(subs).map(x=>`<option>${x}</option>`).join(""); subtipos(); $("fechaResumen").value = new Date().toISOString().slice(0,10); }
+function subtipos(){ $("subtipo").innerHTML = subs[$("tipo").value].map(x=>`<option>${x}</option>`).join(""); otroBox(); }
+function otroBox(){ $("otroDiv").classList.toggle("hidden", $("subtipo").value !== "Otro"); }
+function arr(sel){ return Array.from(document.querySelectorAll(sel)); }
+
+async function cargarPerfil(){
+  const r = await supabaseClient.from("perfiles").select("*").eq("user_id", user.id).maybeSingle();
+  perfil = r.data || {rol:"admin_general", municipio_id:null, email:user.email};
+}
+
+async function cargarTodo(){
+  await cargarMunicipios();
+  await cargarCodigos();
+  await cargarUnidades();
+  await cargarReportes();
+  await cargarUsuarios();
+  await cargarEstaciones();
+  $("navMenu").classList.toggle("hidden", !permitidos().some(m => m.sirecb_nav_activo));
+}
+
+async function cargarMunicipios(){
+  const r = await supabaseClient.from("municipios").select("*").order("nombre");
+  municipios = r.data || [];
+  const permit = permitidos();
+  const html = permit.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join("");
+  $("municipioSelect").innerHTML = html; $("munEst").innerHTML = html; $("munUni").innerHTML = html;
+  $("umun").innerHTML = municipios.map(m=>`<option value="${m.id}">${m.nombre}</option>`).join("");
+  $("munBox").innerHTML = municipios.map(m=>`<div class="item"><b>${m.nombre}</b><br>NAV: ${m.sirecb_nav_activo ? "Sí":"No"}</div>`).join("");
+}
+
+async function cargarCodigos(){
+  const r = await supabaseClient.from("codigos_emergencia").select("*").order("nombre");
+  $("codigosBox").innerHTML = (r.data||[]).map(c=>`<div class="item">🌐 ${c.nombre}</div>`).join("");
+}
+async function cargarUnidades(){
+  const r = await supabaseClient.from("unidades").select("*");
+  unidades = r.data || [];
+  $("uniBox").innerHTML = unidades.filter(u=>perfil.rol==="admin_general" || ids().includes(u.municipio_id)).map(u=>`<div class="item">${u.codigo} · ${u.tipo||""}</div>`).join("");
+}
+async function cargarEstaciones(){
+  const r = await supabaseClient.from("estaciones").select("*");
+  $("estBox").innerHTML = (r.data||[]).filter(e=>perfil.rol==="admin_general" || ids().includes(e.municipio_id)).map(e=>`<div class="item">${e.nombre}</div>`).join("");
+}
+async function cargarUsuarios(){
+  const r = await supabaseClient.from("perfiles").select("*");
+  $("usuariosBox").innerHTML = (r.data||[]).map(u=>`<div class="item">${u.nombre||"N/A"} · ${u.rol||"N/A"}</div>`).join("");
+}
+async function cargarReportes(){
+  const r = await supabaseClient.from("reportes").select("*").order("created_at",{ascending:false});
+  reportes = (r.data||[]).filter(x=>perfil.rol==="admin_general" || ids().includes(x.municipio_id));
+  const activos = reportes.filter(x=>x.estado!=="Concluida" || !x.hora_cierre || ((new Date()-new Date(x.hora_cierre))/60000)<=30);
+  $("dashBox").innerHTML = activos.map(x=>`<div class="badge ${x.estado==="Concluida"?"verde":x.estado==="Despachada"?"azul":x.estado==="Cancelada"?"gris":"rojo"}">${x.tipo}/${x.subtipo||""}<br>${x.caso_911}<br>${x.direccion}<br>${x.estado}</div>`).join("");
+  $("tabla").innerHTML = reportes.map(x=>`<div class="item"><b>${x.caso_911}</b> · ${x.tipo}/${x.subtipo||""}<br>${x.direccion}<br>${x.estado}</div>`).join("");
+  const repOpt = reportes.map(x=>`<option value="${x.id}">${x.caso_911} - ${x.tipo}</option>`).join("");
+  $("docReporte").innerHTML = repOpt; $("navReporte").innerHTML = repOpt;
+}
+
+function block(html, boxId){ const d=document.createElement("div"); d.className="item"; d.innerHTML = html + `<button class="btn-dark" type="button" onclick="this.parentElement.remove()">Eliminar</button>`; $(boxId).appendChild(d); }
+function apoyos(c1,c2,c3){ return arr(c1).map((x,i)=>({a:x.value,b:arr(c2)[i]?.value || "",c:arr(c3)[i]?.value || ""})); }
+
+async function crearCodigo(){ const r=await supabaseClient.from("codigos_emergencia").insert([{nombre:$("nuevoCodigo").value,categoria:"GLOBAL",municipio_id:null}]); if(r.error) alert(r.error.message); else {$("nuevoCodigo").value=""; cargarCodigos();} }
+async function crearEstacion(){ const r=await supabaseClient.from("estaciones").insert([{municipio_id:$("munEst").value,nombre:$("estNombre").value,direccion:$("estDir").value}]); if(r.error) alert(r.error.message); else cargarEstaciones(); }
+async function crearUnidad(){ const r=await supabaseClient.from("unidades").insert([{municipio_id:$("munUni").value,codigo:$("uniCodigo").value,tipo:$("uniTipo").value}]); if(r.error) alert(r.error.message); else cargarUnidades(); }
+async function crearPerfil(){ const r=await supabaseClient.from("perfiles").insert([{user_id:$("uid").value,nombre:$("unombre").value,email:$("uemail").value,rol:$("urol").value,municipio_id:$("umun").value}]); if(r.error) alert(r.error.message); else cargarUsuarios(); }
+async function crearMunicipio(){ const r=await supabaseClient.from("municipios").insert([{nombre:$("mnombre").value,slug:$("mslug").value,telefono:$("mtel").value,direccion:$("mdir").value,sirecb_nav_activo:$("mnav").value==="true"}]); if(r.error) alert(r.error.message); else cargarMunicipios(); }
+
+async function guardarReporte(){
+  const data = {
+    caso_911:$("caso911").value, municipio_id:$("municipioSelect").value, direccion:$("direccion").value,
+    tipo:$("tipo").value, subtipo:$("subtipo").value, otro_tipo:$("otro").value, unidad:$("unidad").value,
+    conductor:$("conductor").value, comandante:$("comandante").value, hora_recepcion:$("hRecep").value,
+    hora_despacho:$("hDesp").value, hora_llegada:$("hLleg").value, hora_retiro:$("hRet").value,
+    hora_retorno:$("hRetorno").value, informe:$("informe").value, datos_complementarios:$("datosComp").value,
+    hallazgos:$("hallazgos").value, conclusiones_periciales:$("conclusiones").value,
+    estado:$("estado").value, hora_cierre:$("estado").value==="Concluida" ? new Date().toISOString() : null,
+    apoyo_interno:apoyos(".aiU",".aiC",".aiM"),
+    apoyo_externo:arr(".aeB").map((x,i)=>({cuerpo:x.value,ficha:arr(".aeU")[i]?.value||"",conductor:arr(".aeC")[i]?.value||"",comandante:arr(".aeM")[i]?.value||""})),
+    agencias_participantes:arr(".agA").map((x,i)=>({agencia:x.value,nombre:arr(".agN")[i]?.value||"",cargo:arr(".agC")[i]?.value||"",obs:arr(".agO")[i]?.value||""}))
+  };
+  const r=await supabaseClient.from("reportes").insert([data]);
+  if(r.error) alert(r.error.message); else {alert("Guardado"); cargarReportes();}
+}
+
+function generarDoc(){
+  const r = reportes.find(x=>x.id===$("docReporte").value); if(!r){$("docPreview").textContent="Seleccione un reporte"; return;}
+  const m = municipios.find(x=>x.id===r.municipio_id) || {};
+  const t = $("docTipo").value; let txt = "";
+  if(t==="Reporte de la Emergencia") txt = `${m.nombre||"CUERPO DE BOMBEROS"}\nREPORTE DE LA EMERGENCIA\n\nCaso 911: ${r.caso_911}\nEmergencia: ${r.tipo}/${r.subtipo}\nDirección: ${r.direccion}\nUnidad: ${r.unidad}\nConductor: ${r.conductor}\nComandante: ${r.comandante}\nInforme: ${r.informe||"N/A"}`;
+  if(t==="Constancia de Emergencia") txt = `${m.nombre||"CUERPO DE BOMBEROS"}\nCONSTANCIA DE EMERGENCIA\n\nQUIEN SUSCRIBE ${$("oficial").value||"________"}, ACTUANDO BAJO AUTORIDAD INSTITUCIONAL, HACE CONSTAR QUE EN LOS REGISTROS REPOSA EL REPORTE ${r.caso_911}, OCURRIDO EN ${r.direccion}, CLASIFICADO COMO ${r.tipo}/${r.subtipo}.\n\nSolicitante: ${$("solicitante").value||"________"}\nCédula: ${$("cedula").value||"________"}\nFirma y sello.`;
+  if(t==="Certificación de Emergencia") txt = `${m.nombre||"CUERPO DE BOMBEROS"}\nCERTIFICACIÓN DE EMERGENCIA\nDepartamento Técnico\n\nCaso: ${r.caso_911}\nHallazgos:\n${r.hallazgos||"N/A"}\n\nConclusiones periciales / causa probable:\n${r.conclusiones_periciales||"N/A"}\n\nOficial: ${$("oficial").value||"________"}\nCargo: ${$("cargo").value||"________"}`;
+  $("docPreview").textContent = txt;
+}
+function resumenDiario(){
+  const f=$("fechaResumen").value;
+  const l=reportes.filter(r=>(r.created_at||"").slice(0,10)===f);
+  const tipos={}, estados={}; l.forEach(r=>{tipos[r.tipo]=(tipos[r.tipo]||0)+1; estados[r.estado]=(estados[r.estado]||0)+1;});
+  $("stats").innerHTML = `<div class="stat"><b>${l.length}</b><br>Total</div><div class="stat"><b>${Object.keys(tipos).length}</b><br>Tipos</div><div class="stat"><b>${estados["Concluida"]||0}</b><br>Concluidas</div>`;
+  $("resDetalle").innerHTML = l.map(r=>`<div class="item">${r.caso_911} · ${r.tipo}/${r.subtipo} · ${r.direccion} · ${r.estado}</div>`).join("");
+}
+
+async function cargarNav(){
+  await cargarUnidades(); await cargarReportes();
+  const u=unidades.filter(x=>ids().includes(x.municipio_id));
+  $("navUnidad").innerHTML = u.map(x=>`<option value="${x.id}">${x.codigo} - ${x.tipo||""}</option>`).join("");
+  await cargarSesiones();
+}
+async function activarUnidad(){
+  const u=unidades.find(x=>x.id===$("navUnidad").value); if(!u) return alert("Seleccione una unidad");
+  const r=await supabaseClient.from("nav_unidades_sesion").insert([{user_id:user.id,municipio_id:u.municipio_id,unidad_id:u.id,unidad_codigo:u.codigo,conductor:$("navCond").value,comandante:$("navCom").value,dotacion:$("navDot").value,estado:"Disponible",updated_at:new Date().toISOString()}]);
+  if(r.error) alert(r.error.message); else cargarSesiones();
+}
+async function cargarSesiones(){
+  const r=await supabaseClient.from("nav_unidades_sesion").select("*").order("updated_at",{ascending:false});
+  sesiones=(r.data||[]).filter(s=>ids().includes(s.municipio_id));
+  const disp=sesiones.filter(s=>s.estado==="Disponible");
+  $("navDisponible").innerHTML = disp.map(s=>`<option value="${s.id}">${s.unidad_codigo} - ${s.conductor||""}</option>`).join("");
+  $("board").innerHTML = disp.map(s=>`<div class="item">✅ ${s.unidad_codigo}<br>${s.conductor||""} / ${s.comandante||""}<br>${s.dotacion||""}</div>`).join("");
+  const mia=sesiones.find(s=>s.user_id===user.id);
+  $("miUnidad").innerHTML = mia ? `<div class="item">Mi unidad: ${mia.unidad_codigo}<br>Estado: ${mia.estado}</div>` : "";
+}
+async function estadoMiUnidad(e){
+  const mia=sesiones.find(s=>s.user_id===user.id); if(!mia) return alert("No tienes unidad activa");
+  await supabaseClient.from("nav_unidades_sesion").update({estado:e,updated_at:new Date().toISOString()}).eq("id",mia.id); cargarSesiones();
+}
+async function despachar(){
+  const s=sesiones.find(x=>x.id===$("navDisponible").value); if(!s) return alert("No hay unidad disponible");
+  await supabaseClient.from("nav_asignaciones").insert([{reporte_id:$("navReporte").value,municipio_id:s.municipio_id,unidad_sesion_id:s.id,unidad_id:s.unidad_id,estado:"Asignada",observaciones:$("navObs").value}]);
+  await supabaseClient.from("nav_unidades_sesion").update({estado:"Despachada / En ruta",emergencia_id:$("navReporte").value,updated_at:new Date().toISOString()}).eq("id",s.id);
+  alert("Unidad despachada. Navegación habilitada."); cargarSesiones();
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  $("testBtn").addEventListener("click", ()=>setMsg("✅ El botón funciona. Si no entra, el problema es autenticación o conexión con Supabase.","ok"));
+
+  if(!window.supabase){
+    setMsg("❌ No cargó Supabase. Revisa internet o bloqueos del navegador.", "err");
+    return;
+  }
+  supabaseClient = window.supabase.createClient(URL, KEY);
+
+  $("loginForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    try{
+      setMsg("Conectando...");
+      const r = await supabaseClient.auth.signInWithPassword({email:$("correo").value.trim(), password:$("clave").value});
+      if(r.error){ setMsg("❌ " + r.error.message, "err"); return; }
+      user = r.data.user;
+      await cargarPerfil();
+      $("loginScreen").classList.add("hidden");
+      $("app").classList.remove("hidden");
+      initTipos();
+      await cargarTodo();
+      setMsg("");
+    }catch(err){
+      setMsg("❌ Error: " + err.message, "err");
+    }
+  });
+
+  document.querySelectorAll("[data-mod]").forEach(b=>b.addEventListener("click",()=>show(b.dataset.mod)));
+  $("logoutBtn").addEventListener("click", async()=>{ await supabaseClient.auth.signOut(); location.reload(); });
+  $("tipo").addEventListener("change", subtipos); $("subtipo").addEventListener("change", otroBox);
+  $("btnAI").addEventListener("click", ()=>block(`<input class="aiU" placeholder="Ficha"><input class="aiC" placeholder="Conductor"><input class="aiM" placeholder="Comandante">`,"aiBox"));
+  $("btnAE").addEventListener("click", ()=>block(`<input class="aeB" placeholder="Cuerpo bomberos"><input class="aeU" placeholder="Ficha"><input class="aeC" placeholder="Conductor opcional"><input class="aeM" placeholder="Comandante opcional">`,"aeBox"));
+  $("btnAG").addEventListener("click", ()=>block(`<select class="agA"><option>Policía Nacional</option><option>DIGESETT</option><option>Defensa Civil</option><option>Ambulancia</option><option>Otra</option></select><input class="agN" placeholder="Nombre"><input class="agC" placeholder="Cargo"><textarea class="agO" placeholder="Observación"></textarea>`,"agBox"));
+  $("guardarReporteBtn").addEventListener("click", guardarReporte);
+  $("generarDocBtn").addEventListener("click", generarDoc);
+  $("resumenBtn").addEventListener("click", resumenDiario);
+  $("crearCodigoBtn").addEventListener("click", crearCodigo);
+  $("crearEstacionBtn").addEventListener("click", crearEstacion);
+  $("crearUnidadBtn").addEventListener("click", crearUnidad);
+  $("crearPerfilBtn").addEventListener("click", crearPerfil);
+  $("crearMunicipioBtn").addEventListener("click", crearMunicipio);
+  $("activarUnidadBtn").addEventListener("click", activarUnidad);
+  $("fueraServicioBtn").addEventListener("click", ()=>estadoMiUnidad("Fuera de servicio"));
+  $("despacharBtn").addEventListener("click", despachar);
+});
+
+</script>
+</body>
+</html>
