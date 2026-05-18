@@ -30,11 +30,11 @@ button:hover{filter:brightness(1.08)}
   <div class="card" style="max-width:430px;margin:45px auto">
     <h1 style="text-align:center;color:#991b1b">🚒 SIRECB</h1>
     <h3 style="text-align:center">Acceso institucional</h3>
-    <form id="loginForm">
+    <div id="loginForm">
       <input id="correo" type="email" placeholder="Correo" required autocomplete="username">
       <input id="clave" type="password" placeholder="Contraseña" required autocomplete="current-password">
-      <button type="submit">Entrar</button>
-    </form>
+      <button type="button" id="entrarBtn">Entrar</button>
+    </div>
     <button type="button" class="btn-dark" id="testBtn">Probar botón</button>
     <p id="msg"></p>
   </div>
@@ -361,21 +361,41 @@ document.addEventListener("DOMContentLoaded", function(){
   }
   supabaseClient = window.supabase.createClient(URL, KEY);
 
-  $("loginForm").addEventListener("submit", async function(e){
-    e.preventDefault();
+  $("entrarBtn").addEventListener("click", async function(){
     try{
       setMsg("Conectando...");
-      const r = await supabaseClient.auth.signInWithPassword({email:$("correo").value.trim(), password:$("clave").value});
-      if(r.error){ setMsg("❌ " + r.error.message, "err"); return; }
+      const email = $("correo").value.trim();
+      const password = $("clave").value;
+
+      if(!email || !password){
+        setMsg("❌ Debes escribir correo y contraseña.", "err");
+        return;
+      }
+
+      const r = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if(r.error){
+        setMsg("❌ " + r.error.message, "err");
+        return;
+      }
+
       user = r.data.user;
+      setMsg("✅ Login correcto. Cargando sistema...", "ok");
+
       await cargarPerfil();
+
       $("loginScreen").classList.add("hidden");
       $("app").classList.remove("hidden");
+
       initTipos();
       await cargarTodo();
-      setMsg("");
+
     }catch(err){
-      setMsg("❌ Error: " + err.message, "err");
+      setMsg("❌ Error al entrar: " + err.message, "err");
+      console.error(err);
     }
   });
 
